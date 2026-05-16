@@ -1,34 +1,53 @@
 """
-Snakefile — Phonetics Representations Analysis
-Pipeline orchestration. Run with:  pixi run snakemake --cores 1
+Snakefile — RU-FR Interference phonetics analysis pipeline.
 
-Each stage will be added as a rule in its dedicated chat.
+Stages:
+  1. parse_corpus       -> data/interim/tokens.csv
+  (subsequent stages will be added as the project progresses)
 """
+from pathlib import Path
 
 configfile: "config.yaml"
 
 
-# Default target: what `snakemake` builds when no target is specified.
-# Will be expanded as stages are added.
+# Default target: build everything currently defined.
 rule all:
     input:
-        []   # placeholder: nessun output ancora prodotto
+        "data/interim/tokens.csv"
 
 
-# --- Stage 1: parse_corpus (chat [02]) ---
-# rule parse_corpus:
-#     input:
-#         textgrids = config["raw_textgrid_dir"],
-#         metadata = "data/metadata.csv"
-#     output:
-#         tokens = config["interim_dir"] + "/tokens.csv"
-#     script:
-#         "src/parse_corpus.py"
+# ---------------------------------------------------------------------------
+# Stage 1: parse_corpus
+# ---------------------------------------------------------------------------
+# Note on TextGrid tracking: with 1482 source files, listing each as an
+# explicit input would clutter every Snakemake log. Instead we summarize them
+# as a single content-hash digest stored in `params.tg_digest`. Snakemake
+# re-runs the rule when this digest changes, which happens iff any TextGrid
+# is added, removed, or modified.
+import hashlib
+
+_TG_DIR = Path("data/raw/ru-fr_interference/wav_et_textgrids/FRcorp_textgrids_only")
+
+def _textgrid_digest() -> str:
+    """Return a short hash summarizing the corpus content (filenames + mtimes)."""
+    if not _TG_DIR.exists():
+        return "no-corpus"
+    h = hashlib.sha1()
+    for p in sorted(_TG_DIR.rglob("*.TextGrid")):
+        h.update(str(p).encode("utf-8"))
+        h.update(str(p.stat().st_mtime_ns).encode("utf-8"))
+    return h.hexdigest()[:12]
 
 
-# --- Stage 2: extract_acoustics (chat [03]) ---
-# ...
-
-
-# --- Stage 3: extract_neural_whisper (chat [04]) ---
-# ...
+rule parse_corpus:
+    input:
+        script = "src/parse_corpus.py",
+        config = "config.yaml",
+        metadata = config["parse_corpus"]["metadata"],
+        rufrcorr = config["parse_corpus"]["rufrcorr"],
+    output:
+        config["parse_corpus"]["output"]
+    params:
+        tg_digest = _textgrid_digest()
+    shell:
+        "pixi run python {input.script} --config {input.config}"

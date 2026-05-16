@@ -9,3 +9,5 @@ version = "0.1.0"
 
 [dependencies]
 snakemake-minimal = ">=9.20.0,<10"
+praatio = ">=6.2.2,<7"
+pandas = ">=3.0.3,<4"
