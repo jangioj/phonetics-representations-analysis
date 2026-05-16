@@ -1,0 +1,28 @@
+# === Dati (NON versionare) ===
+data/
+results/
+*.wav
+*.mp3
+*.flac
+*.TextGrid
+*.npz
+*.npy
+
+# === Pixi env ===
+.pixi/
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# === PyCharm ===
+.idea/
+
+# === OS ===
+Thumbs.db
+.DS_Store
+
+# === Snakemake ===
+.snakemake/

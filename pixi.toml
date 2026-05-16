@@ -1,0 +1,10 @@
+[workspace]
+authors = ["jangioj <alessandroangiolillo99@gmail.com>"]
+channels = ["conda-forge"]
+name = "FINAL_PROJECT"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
