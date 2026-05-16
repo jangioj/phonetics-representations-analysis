@@ -27,16 +27,62 @@ from praatio import textgrid
 # ---------------------------------------------------------------------------
 # Phonological lookup
 # ---------------------------------------------------------------------------
-# French vowel inventory (oral + nasal). Glides /j w ɥ/ are treated as
-# consonants (standard phonetic analysis: they are approximants, not
-# syllabic nuclei).
-FRENCH_VOWELS: set[str] = {
-    # oral
+# Vowel inventory: French oral+nasal vowels plus a few Russian vowels that
+# appear in L2 (interference cues). Glides /j w ɥ/ are kept as consonants.
+# The name is historical; effectively this is "any vowel that may surface
+# in this corpus".
+VOWEL_INVENTORY: set[str] = {
+    # French oral
     "i", "e", "ɛ", "a", "ɑ", "ɔ", "o", "u",
     "y", "ø", "œ", "ə",
-    # nasal
+    # French nasal
     "ɛ̃", "ɑ̃", "ɔ̃", "œ̃",
+    # Russian vowels surfacing in L2 speakers (interference)
+    "ɨ", "ɪ", "ʉ", "æ",
 }
+# Backward-compatible alias used elsewhere in this file.
+FRENCH_VOWELS = VOWEL_INVENTORY
+
+# Combining diacritics / length / palatalization marks are stripped to recover
+# the "base" phoneme. The base symbol drives clustering and most acoustic
+# analyses; the raw `phoneme` column preserves the fine annotation (which
+# carries L1→L2 interference cues like palatalized /sʲ/).
+_STRIP_CHARS = {
+    "ː": "",   # IPA length mark
+    ":": "",   # ASCII length mark (occasional)
+    "ʲ": "",   # palatalization
+}
+
+
+def _phoneme_base(label: str) -> str:
+    """Strip combining diacritics, length marks, and palatalization.
+
+    Examples:
+        'b̥' -> 'b'      'aː' -> 'a'    'sʲ' -> 's'
+        'ʁ̥' -> 'ʁ'      'ɑ̃' -> 'ɑ̃'   (nasal tilde kept as it is contrastive)
+    Note: nasal vowels keep their tilde because nasality is contrastive in
+    French (/a/ vs /ɑ̃/ are different phonemes); we only strip non-contrastive
+    diacritics.
+    """
+    # NFD decomposes precomposed chars; we then drop combining marks selectively.
+    decomposed = unicodedata.normalize("NFD", label)
+    # Keep the combining tilde (U+0303) because nasal vowels are phonemic.
+    NASAL_TILDE = "\u0303"
+    out = []
+    for ch in decomposed:
+        if unicodedata.category(ch) == "Mn" and ch != NASAL_TILDE:
+            continue  # skip combining mark
+        out.append(ch)
+    s = unicodedata.normalize("NFC", "".join(out))
+    for k, v in _STRIP_CHARS.items():
+        s = s.replace(k, v)
+    return s
+
+
+def _is_garbage_label(label: str) -> bool:
+    """Drop spurious annotations like 'ding... k', which are non-linguistic
+    bell/marker sounds inserted by the annotator."""
+    return label.strip().lower().startswith("ding")
 
 DISTRACTOR_MARKER = "distractor"
 
@@ -256,29 +302,35 @@ def process_textgrid(
     on_span, off_span = span
 
     phonemes = extract_phonemes_in_span(phones_entries, on_span, off_span)
+    # Drop spurious "ding..." annotations (non-linguistic bell/marker sounds).
+    phonemes = [(on, off, lab) for (on, off, lab) in phonemes if not _is_garbage_label(lab)]
     if not phonemes:
         print(f"  [WARN] zero target phonemes in {tg_path.name}", file=sys.stderr)
         return []
 
     rows = []
-    for on, off, label in phonemes:
+    for ph_idx, (on, off, label) in enumerate(phonemes):
+        base = _phoneme_base(label)
         rows.append(
             {
                 "speaker_id": spk,
-                "sentence_id": target_word,
+                "sentence_id": f"FRcorp{slot}",
+                "target_word": target_word,
                 "repetition": info["repetition"],
+                "phoneme_index": ph_idx,
                 "phoneme": label,
+                "phoneme_base": base,
                 "onset": on,
                 "offset": off,
                 "duration": off - on,
                 "L1_status": spk_meta["L1_status"],
                 "gender": spk_meta["gender"],
-                "is_vowel": label in FRENCH_VOWELS,
+                "is_vowel": base in FRENCH_VOWELS,  # check base, not raw
                 "slot": slot,
+                # token_id is filled in main() after concatenation.
             }
         )
     return rows
-
 
 # ---------------------------------------------------------------------------
 # Driver
@@ -302,6 +354,10 @@ def main(config_path: Path) -> None:
         print(f"[DEBUG MODE] n_speakers={n_spk}, n_repetitions={n_rep}", file=sys.stderr)
 
     speakers = load_speakers_metadata(metadata_csv)
+    # Invariant: speaker codes are uppercase in metadata; filename parser
+    # also uppercases the prefix. Catch any future drift early.
+    assert all(spk == spk.upper() for spk in speakers), \
+        "Speaker IDs must be uppercase in metadata"
     if n_spk is not None:
         keep = select_speaker_subset(speakers, int(n_spk))
         speakers = {k: v for k, v in speakers.items() if k in keep}
@@ -332,30 +388,47 @@ def main(config_path: Path) -> None:
             all_rows.extend(rows)
 
     df = pd.DataFrame(all_rows)
+    # Assign a stable, globally unique token_id (just the row order, which is
+    # deterministic given the deterministic file traversal).
+    df.insert(0, "token_id", range(len(df)))
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_csv, index=False, encoding="utf-8")
 
-    # --- Sanity report ---
-    print(f"\n=== parse_corpus DONE ===")
-    if debug_on:
-        print(f"** DEBUG MODE: n_speakers={n_spk}, n_repetitions={n_rep} **")
-    print(f"Files visited       : {n_files}")
-    print(f"Files skipped       : {n_skipped} (distractors + warnings)")
-    print(f"Total phoneme tokens: {len(df)}")
-    print(f"Output              : {out_csv}")
-    if len(df) == 0:
-        print("No tokens emitted; check warnings above.")
-        return
-    print(f"\nSpeakers ({df.speaker_id.nunique()}): {sorted(df.speaker_id.unique())}")
-    print(f"\nTokens per group (L1_status x gender):")
-    print(df.groupby(["L1_status", "gender"]).size().to_string())
-    print(f"\nTokens per phoneme (top 25):")
-    print(df.phoneme.value_counts().head(25).to_string())
-    print(f"\nUnique sentence_ids ({df.sentence_id.nunique()}):")
-    print(", ".join(sorted(df.sentence_id.unique())))
-    print(f"\nRepetitions per (speaker, sentence) - min/max:")
-    rep_counts = df.groupby(["speaker_id", "sentence_id"]).repetition.nunique()
+    print(f"\nUnique target words ({df.target_word.nunique()}):")
+    print(", ".join(sorted(df.target_word.unique())))
+    print(f"\nUnique sentence_ids: {df.sentence_id.nunique()} (expected: 72 = 12 targets x 6 reps)")
+    print(f"\nRepetitions per (speaker, target_word) - min/max:")
+    rep_counts = df.groupby(["speaker_id", "target_word"]).repetition.nunique()
     print(f"  min={rep_counts.min()}, max={rep_counts.max()}, mean={rep_counts.mean():.2f}")
+
+    # Phoneme inventory: raw (fine annotation) vs base (after diacritic strip).
+    raw_inv = sorted(df.phoneme.unique())
+    base_inv = sorted(df.phoneme_base.unique())
+    print(f"\nRaw phoneme inventory ({len(raw_inv)} symbols):")
+    print("  " + " ".join(raw_inv))
+    print(f"\nBase phoneme inventory ({len(base_inv)} symbols, used for is_vowel):")
+    print("  " + " ".join(base_inv))
+    unk_bases = [p for p in base_inv if p not in FRENCH_VOWELS and not df.loc[df.phoneme_base == p, "is_vowel"].any()]
+    vowels_seen = sorted(p for p in base_inv if p in FRENCH_VOWELS)
+    print(f"  vowel bases recognized: {vowels_seen}")
+    print(f"  consonant bases: {[p for p in base_inv if p not in FRENCH_VOWELS]}")
+
+    # Soft IPA-sequence sanity: compare extracted phonemes vs expected target_ipa.
+    # We rebuild expected sequences from RUFRcorr and count mismatches.
+    n_mismatch = 0
+    expected_by_target: dict[str, list[str]] = {
+        info["target_word"]: info["target_ipa"]
+        for info in slot_lookup.values()
+        if info["target_word"] != DISTRACTOR_MARKER and info["target_ipa"]
+    }
+    for (spk_, tw, rep), grp in df.groupby(["speaker_id", "target_word", "repetition"]):
+        expected = expected_by_target.get(tw, [])
+        got = list(grp.sort_values("phoneme_index").phoneme_base)
+        if expected and got != expected:
+            n_mismatch += 1
+    print(f"\nIPA-sequence mismatches (extracted != RUFRcorr expected): "
+          f"{n_mismatch} / {df.groupby(['speaker_id', 'target_word', 'repetition']).ngroups} trials")
+    print("  (mismatches are informational only; non-blocking)")
 
 
 if __name__ == "__main__":
