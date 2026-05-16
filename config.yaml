@@ -1,0 +1,33 @@
+# Tunable parameters for the pipeline.
+# Snakemake will treat changes here as a reason to re-run affected stages.
+
+# === Paths ===
+data_dir: "data"
+raw_audio_dir: "data/raw/audio"
+raw_textgrid_dir: "data/raw/textgrids"
+interim_dir: "data/interim"
+results_dir: "results"
+
+# === Stage 2: extract_acoustics ===
+# (LPC parameters; fixed by project spec)
+formant:
+  max_formant_female: 5000   # Hz
+  max_formant_male: 4500     # Hz
+  n_formants: 5
+
+# === Stage 3-4: neural extraction (placeholder, da decidere) ===
+whisper:
+  model: "openai/whisper-medium"   # or whisper-large-v3
+  layer_lower: null                # TBD: lower-half layer (1-8)
+  layer_upper: null                # TBD: upper-half layer (17-24)
+
+xlsr:
+  model: "facebook/wav2vec2-large-xlsr-53"
+  layer_lower: null                # TBD: 1-6
+  layer_middle: null               # TBD: 7-12
+  layer_upper: null                # TBD: 13-24
+
+# === Stage 5: normalise ===
+pca:
+  n_components_viz: 2
+  n_components_clustering: 50
