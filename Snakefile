@@ -21,16 +21,18 @@ def _xlsr_outputs():
     nx = config["extract_neural_xlsr"]
     return [f"{nx['output_dir']}/{nx['output_prefix']}_L{L:02d}.npz" for L in nx["layers"]]
 
-def _neural_pca_outputs():
-    """List of PCA-reduced .npz files: one per (model, layer)."""
+def _neural_reduced_outputs():
+    """List of PCA- and UMAP-reduced .npz files: two per (model, layer)."""
     nn = config["normalise_neural"]
     out_dir = nn["output_dir"]
-    suffix = nn["output_suffix"]
+    pca_suffix = nn["pca_output_suffix"]
+    umap_suffix = nn["umap_output_suffix"]
     files = []
     for key in ("extract_neural_whisper", "extract_neural_xlsr"):
         up = config[key]
         for L in up["layers"]:
-            files.append(f"{out_dir}/{up['output_prefix']}_L{L:02d}_{suffix}.npz")
+            files.append(f"{out_dir}/{up['output_prefix']}_L{L:02d}_{pca_suffix}.npz")
+            files.append(f"{out_dir}/{up['output_prefix']}_L{L:02d}_{umap_suffix}.npz")
     return files
 
 # Default target: build everything currently defined.
@@ -41,7 +43,7 @@ rule all:
         _whisper_outputs(),
         _xlsr_outputs(),
         config["normalise_acoustic"]["output_features"],
-        _neural_pca_outputs()
+        _neural_reduced_outputs()
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +148,6 @@ rule normalise_neural:
         whisper_npz = _whisper_outputs(),
         xlsr_npz = _xlsr_outputs(),
     output:
-        _neural_pca_outputs()
+        _neural_reduced_outputs()
     shell:
         "pixi run python {input.script} --config {input.config}"

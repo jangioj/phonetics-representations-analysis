@@ -128,7 +128,13 @@ normalise_acoustic:
 normalise_neural:
   input_dir: data/interim
   output_dir: data/interim
-  output_suffix: pca           # final files: features_<prefix>_L{NN}_pca.npz
+  pca_output_suffix: pca       # -> features_<prefix>_L{NN}_pca.npz
+  umap_output_suffix: umap     # -> features_<prefix>_L{NN}_umap.npz
 
   pca_n_components: 50
+
+  umap_n_components: 2
+  umap_n_neighbors: 15         # default; phoneme clusters are local structure
+  umap_min_dist: 0.1           # default; tighter clusters than 0.5
+
   random_state: 42
