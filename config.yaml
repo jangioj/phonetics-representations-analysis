@@ -138,3 +138,65 @@ normalise_neural:
   umap_min_dist: 0.1           # default; tighter clusters than 0.5
 
   random_state: 42
+
+# ---------------------------------------------------------------------------
+# Stage 6a: descriptive_acoustic
+# ---------------------------------------------------------------------------
+descriptive_acoustic:
+  input_features: data/interim/features_acoustic_norm.csv
+  figures_dir: results/figures
+  tables_dir: results/tables
+  random_state: 42
+
+  # PDF-compliant selected subset for the intra-speaker variability figure.
+  # The full table is still written to results/tables/tab_intraspeaker_variability_sd.csv.
+  intraspeaker_subset_vowels: ["i", "e", "a", "ɑ", "y", "ə"]
+
+# ---------------------------------------------------------------------------
+# Stage 6b: descriptive_neural
+# ---------------------------------------------------------------------------
+descriptive_neural:
+  input_metadata: data/interim/features_acoustic_norm.csv  # for token_id -> phoneme/L1/gender
+  interim_dir: data/interim
+  figures_dir: results/figures
+  tables_dir: results/tables
+
+  n_within_per_class: 500
+  n_between_pairs: 5000
+  random_state: 42
+
+  # Efficient plotting policy: compute tables for all layers, but only generate
+  # report-ready figures for selected layers unless plot_all_layers is true.
+  plot_all_layers: false
+  report_layers:
+    whisper: [12]
+    xlsr: [4]
+
+  # Required by the PDF: one projection coloured by phoneme, one by L1 status,
+  # and one by gender. All plots remain vowel-only to answer the vowel-structure question.
+  color_by: ["phoneme_base", "L1_status", "gender"]
+
+# ---------------------------------------------------------------------------
+# Stage 6c: descriptive_cross
+# ---------------------------------------------------------------------------
+descriptive_cross:
+  input_acoustic: data/interim/features_acoustic_norm.csv
+  interim_dir: data/interim
+  figures_dir: results/figures
+  tables_dir: results/tables
+
+  # Main analysis: PDF core vowel-space representation.
+  acoustic_main_feature_cols: ["F1_norm", "F2_norm"]
+
+  # Optional extended acoustic representation. Kept separate because adding
+  # F3/f0 changes the acoustic geometry used by the Mantel comparison.
+  acoustic_extended_feature_cols: ["F1_norm", "F2_norm", "F3_norm", "f0_st"]
+
+  # Mantel table is computed for all layers. RSM heatmaps are plotted only for
+  # selected layers to keep the output directory clean.
+  rsm_plot_layers:
+    whisper: [12]
+    xlsr: [4, 12]
+
+  mantel_n_permutations: 5000
+  random_state: 42

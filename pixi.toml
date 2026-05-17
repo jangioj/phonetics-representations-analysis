@@ -13,6 +13,8 @@ praatio = ">=6.2.2,<7"
 pandas = ">=3.0.3,<4"
 setuptools = "<82"
 scikit-learn = ">=1.8.0,<2"
+scipy = ">=1.17.1,<2"
+matplotlib = ">=3.10.9,<4"
 
 [pypi-dependencies]
 praat-parselmouth = ">=0.4.7, <0.5"
@@ -21,3 +23,4 @@ torch = ">=2.12.0, <3"
 soundfile = ">=0.13.1, <0.14"
 librosa = ">=0.11.0, <0.12"
 tqdm = ">=4.67.3, <5"
+umap-learn = ">=0.5.12, <0.6"
