@@ -2,24 +2,32 @@
 Snakefile — RU-FR Interference phonetics analysis pipeline.
 
 Stages:
-  1. parse_corpus        -> data/interim/tokens.csv
-  2. extract_acoustics   -> data/interim/features_acoustic.csv
+  1. parse_corpus            -> data/interim/tokens.csv
+  2. extract_acoustics       -> data/interim/features_acoustic.csv
+  3. extract_neural_whisper  -> data/interim/features_whisper_L{NN}.npz
+  4. extract_neural_xlsr     -> data/interim/features_xlsr_L{NN}.npz
 """
 
 from pathlib import Path
 
 configfile: "config.yaml"
 
+#Helpers
 def _whisper_outputs():
     nw = config["extract_neural_whisper"]
     return [f"{nw['output_dir']}/{nw['output_prefix']}_L{L:02d}.npz" for L in nw["layers"]]
+
+def _xlsr_outputs():
+    nx = config["extract_neural_xlsr"]
+    return [f"{nx['output_dir']}/{nx['output_prefix']}_L{L:02d}.npz" for L in nx["layers"]]
 
 # Default target: build everything currently defined.
 rule all:
     input:
         config["parse_corpus"]["output"],
         config["extract_acoustics"]["output_features"],
-        _whisper_outputs()
+        _whisper_outputs(),
+        _xlsr_outputs()
 
 
 # ---------------------------------------------------------------------------
@@ -83,5 +91,20 @@ rule extract_neural_whisper:
         features_acoustic = config["extract_neural_whisper"]["input_features_acoustic"],
     output:
         _whisper_outputs()
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 4: extract_neural_xlsr
+# ---------------------------------------------------------------------------
+# Runs locally on CPU or on Colab GPU. Running locally is supported for debug.
+rule extract_neural_xlsr:
+    input:
+        script = "src/extract_neural_xlsr.py",
+        config = "config.yaml",
+        tokens = config["extract_neural_xlsr"]["input_tokens"],
+        features_acoustic = config["extract_neural_xlsr"]["input_features_acoustic"],
+    output:
+        _xlsr_outputs()
     shell:
         "pixi run python {input.script} --config {input.config}"
