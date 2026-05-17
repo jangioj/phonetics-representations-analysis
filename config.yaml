@@ -12,6 +12,9 @@ parse_corpus:
     n_speakers: 4
     n_repetitions: 1
 
+# ---------------------------------------------------------------------------
+# Stage 2: extract_acoustics
+# ---------------------------------------------------------------------------
 extract_acoustics:
   input_tokens: data/interim/tokens.csv
   output_features: data/interim/features_acoustic.csv
@@ -35,3 +38,23 @@ extract_acoustics:
   debug:
     enable: false
     n_tokens: 200
+
+# ---------------------------------------------------------------------------
+# Stage 3: extract_neural_whisper
+# ---------------------------------------------------------------------------
+extract_neural_whisper:
+  input_tokens: data/interim/tokens.csv
+  input_features_acoustic: data/interim/features_acoustic.csv
+
+  model_name: "openai/whisper-medium"
+  layers: [ 4, 20]
+
+  device: "auto"             # "auto" -> cuda if available else cpu; or "cuda" / "cpu"
+  embedding_dtype: "float16" # storage dtype for npz
+
+  output_dir: data/interim
+  output_prefix: features_whisper
+
+  debug:
+    enable: false
+    n_tokens: 3

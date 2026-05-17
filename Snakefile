@@ -10,12 +10,16 @@ from pathlib import Path
 
 configfile: "config.yaml"
 
+def _whisper_outputs():
+    nw = config["extract_neural_whisper"]
+    return [f"{nw['output_dir']}/{nw['output_prefix']}_L{L:02d}.npz" for L in nw["layers"]]
 
 # Default target: build everything currently defined.
 rule all:
     input:
         config["parse_corpus"]["output"],
-        config["extract_acoustics"]["output_features"]
+        config["extract_acoustics"]["output_features"],
+        _whisper_outputs()
 
 
 # ---------------------------------------------------------------------------
@@ -64,5 +68,20 @@ rule extract_acoustics:
         tokens = config["extract_acoustics"]["input_tokens"],
     output:
         config["extract_acoustics"]["output_features"]
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 3: extract_neural_whisper
+# ---------------------------------------------------------------------------
+# Runs locally on CPU or on Colab GPU. Running locally is supported for debug
+rule extract_neural_whisper:
+    input:
+        script = "src/extract_neural_whisper.py",
+        config = "config.yaml",
+        tokens = config["extract_neural_whisper"]["input_tokens"],
+        features_acoustic = config["extract_neural_whisper"]["input_features_acoustic"],
+    output:
+        _whisper_outputs()
     shell:
         "pixi run python {input.script} --config {input.config}"
