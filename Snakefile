@@ -21,13 +21,27 @@ def _xlsr_outputs():
     nx = config["extract_neural_xlsr"]
     return [f"{nx['output_dir']}/{nx['output_prefix']}_L{L:02d}.npz" for L in nx["layers"]]
 
+def _neural_pca_outputs():
+    """List of PCA-reduced .npz files: one per (model, layer)."""
+    nn = config["normalise_neural"]
+    out_dir = nn["output_dir"]
+    suffix = nn["output_suffix"]
+    files = []
+    for key in ("extract_neural_whisper", "extract_neural_xlsr"):
+        up = config[key]
+        for L in up["layers"]:
+            files.append(f"{out_dir}/{up['output_prefix']}_L{L:02d}_{suffix}.npz")
+    return files
+
 # Default target: build everything currently defined.
 rule all:
     input:
         config["parse_corpus"]["output"],
         config["extract_acoustics"]["output_features"],
         _whisper_outputs(),
-        _xlsr_outputs()
+        _xlsr_outputs(),
+        config["normalise_acoustic"]["output_features"],
+        _neural_pca_outputs()
 
 
 # ---------------------------------------------------------------------------
@@ -106,5 +120,32 @@ rule extract_neural_xlsr:
         features_acoustic = config["extract_neural_xlsr"]["input_features_acoustic"],
     output:
         _xlsr_outputs()
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 5a: normalise_acoustic
+# ---------------------------------------------------------------------------
+rule normalise_acoustic:
+    input:
+        script = "src/normalise_acoustic.py",
+        config = "config.yaml",
+        features = config["normalise_acoustic"]["input_features"],
+    output:
+        config["normalise_acoustic"]["output_features"]
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 5b: normalise_neural
+# ---------------------------------------------------------------------------
+rule normalise_neural:
+    input:
+        script = "src/normalise_neural.py",
+        config = "config.yaml",
+        whisper_npz = _whisper_outputs(),
+        xlsr_npz = _xlsr_outputs(),
+    output:
+        _neural_pca_outputs()
     shell:
         "pixi run python {input.script} --config {input.config}"

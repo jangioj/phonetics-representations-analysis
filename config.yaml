@@ -78,3 +78,57 @@ extract_neural_xlsr:
   debug:
     enable: false
     n_tokens: 3
+
+# ---------------------------------------------------------------------------
+# Stage 5a: normalise_acoustic
+# ---------------------------------------------------------------------------
+normalise_acoustic:
+  input_features: data/interim/features_acoustic.csv
+  input_tokens: data/interim/tokens.csv
+  output_features: data/interim/features_acoustic_norm.csv
+
+  # French oral + nasal vowel inventory, on phoneme_base (NFD-stripped).
+  # Used to (a) fit the per-speaker Lobanov mean/std, (b) decide which tokens
+  # receive *_norm values (consonants stay NaN).
+  vowel_inventory:
+    # French oral vowels
+    - "i"
+    - "e"
+    - "ɛ"
+    - "a"
+    - "ɑ"
+    - "ɔ"
+    - "o"
+    - "u"
+    - "y"
+    - "ø"
+    - "œ"
+    - "ə"
+
+    # French nasal vowels
+    - "ɛ̃"
+    - "ɑ̃"
+    - "ɔ̃"
+    - "œ̃"
+
+    # L2 / Russian interference vowels observed in the corpus
+    - "ɨ"
+    - "ɪ"
+    - "ʉ"
+    - "æ"
+
+  min_vowel_tokens_per_speaker: 10  # paranoia threshold; abort if a speaker is below
+  f0_reference_hz: 100.0            # reference for log-Hz -> semitone conversion
+
+# ---------------------------------------------------------------------------
+# Stage 5b: normalise_neural
+# ---------------------------------------------------------------------------
+# Layers and prefixes are NOT duplicated here: we read them from the upstream
+# extract_neural_{whisper,xlsr} blocks. One PCA per (model, layer) pair.
+normalise_neural:
+  input_dir: data/interim
+  output_dir: data/interim
+  output_suffix: pca           # final files: features_<prefix>_L{NN}_pca.npz
+
+  pca_n_components: 50
+  random_state: 42
