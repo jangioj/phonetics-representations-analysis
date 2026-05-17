@@ -11,3 +11,27 @@ parse_corpus:
     enable: false
     n_speakers: 4
     n_repetitions: 1
+
+extract_acoustics:
+  input_tokens: data/interim/tokens.csv
+  output_features: data/interim/features_acoustic.csv
+
+  corpus_root: data/raw/ru-fr_interference
+  wav_subdir: wav_et_textgrids/FRcorp_textgrids_only
+
+  formants:
+    n_formants: 5
+    max_formant_female: 5000
+    max_formant_male: 4500
+    long_vowel_threshold_s: 0.080
+
+  pitch:
+    floor_hz: 50
+    ceiling_hz: 600
+
+  scg:
+    fricatives: ["f", "v", "s", "z", "ʃ", "ʒ", "ʁ"]
+
+  debug:
+    enable: false
+    n_tokens: 200

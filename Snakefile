@@ -2,9 +2,10 @@
 Snakefile — RU-FR Interference phonetics analysis pipeline.
 
 Stages:
-  1. parse_corpus       -> data/interim/tokens.csv
-  (subsequent stages will be added as the project progresses)
+  1. parse_corpus        -> data/interim/tokens.csv
+  2. extract_acoustics   -> data/interim/features_acoustic.csv
 """
+
 from pathlib import Path
 
 configfile: "config.yaml"
@@ -13,7 +14,8 @@ configfile: "config.yaml"
 # Default target: build everything currently defined.
 rule all:
     input:
-        "data/interim/tokens.csv"
+        config["parse_corpus"]["output"],
+        config["extract_acoustics"]["output_features"]
 
 
 # ---------------------------------------------------------------------------
@@ -49,5 +51,18 @@ rule parse_corpus:
         config["parse_corpus"]["output"]
     params:
         tg_digest = _textgrid_digest()
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 2: extract_acoustics
+# ---------------------------------------------------------------------------
+rule extract_acoustics:
+    input:
+        script = "src/extract_acoustics.py",
+        config = "config.yaml",
+        tokens = config["extract_acoustics"]["input_tokens"],
+    output:
+        config["extract_acoustics"]["output_features"]
     shell:
         "pixi run python {input.script} --config {input.config}"
