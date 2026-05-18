@@ -155,6 +155,22 @@ def _lme_models_outputs():
         f"{fig_dir}/fig_lme_forest_l2_effect.png",
     ]
 
+def _rope_ci_outputs():
+    """Tables and figures written by src/rope_ci.py."""
+    block = config["rope_ci"]
+    tab_dir = block["tables_dir"]
+    fig_dir = f"{block['figures_dir']}/rope_ci"
+    return [
+        f"{tab_dir}/tab_rope_ci_acoustic.csv",
+        f"{tab_dir}/tab_rope_ci_neural.csv",
+        f"{tab_dir}/tab_rope_summary.csv",
+        f"{tab_dir}/tab_rope_delta0.csv",
+        f"{tab_dir}/tab_rope_acoustic_scale.csv",
+        f"{fig_dir}/fig_rope_acoustic_forest_F1.png",
+        f"{fig_dir}/fig_rope_acoustic_forest_F2.png",
+        f"{fig_dir}/fig_rope_neural_forest.png",
+        f"{fig_dir}/fig_rope_neural_forest_all_layers.png",
+    ]
 
 def _statistical_tests_outputs():
     """Tables and selected figures written by src/statistical_tests.py."""
@@ -240,6 +256,9 @@ rule all:
 
         # Stage 8: lme_models
         _lme_models_outputs(),
+
+        # Stage 9: rope_ci
+        _rope_ci_outputs(),
 
 
 # ---------------------------------------------------------------------------
@@ -442,5 +461,22 @@ rule lme_models:
         xlsr_npz=_xlsr_outputs(),
     output:
         _lme_models_outputs(),
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 9: rope_ci
+# ---------------------------------------------------------------------------
+
+rule rope_ci:
+    input:
+        script="src/rope_ci.py",
+        config="config.yaml",
+        acoustic=config["rope_ci"]["input_acoustic"],
+        acoustic_raw=config["rope_ci"]["input_features_acoustic_raw"],
+        whisper_npz=_whisper_outputs(),
+        xlsr_npz=_xlsr_outputs(),
+    output:
+        _rope_ci_outputs(),
     shell:
         "pixi run python {input.script} --config {input.config}"

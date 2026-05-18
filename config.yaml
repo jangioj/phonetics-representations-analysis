@@ -290,3 +290,60 @@ lme_models:
 
   alpha: 0.05
   random_state: 42
+
+# ---------------------------------------------------------------------------
+# Stage 9: rope_ci
+# ---------------------------------------------------------------------------
+rope_ci:
+  input_acoustic: data/interim/features_acoustic_norm.csv
+  input_features_acoustic_raw: data/interim/features_acoustic.csv
+  interim_dir: data/interim
+  figures_dir: results/figures
+  tables_dir: results/tables
+
+  # Same vowel selection logic as Stage 8.
+  oral_vowels: ["i", "e", "ɛ", "a", "ɑ", "ɔ", "o", "u", "y", "ø", "œ", "ə"]
+  acoustic_response_cols: ["F1_norm", "F2_norm"]
+
+  # All layers used for full CI + ROPE tables.
+  neural_layers:
+    whisper: [4, 12, 20]
+    xlsr: [4, 12, 20]
+
+  # Layers used for the main report forest plot.
+  # Justified by Stage 5/6 descriptive results: Whisper L12 has the highest
+  # between-class UMAP ratio and partial R^2(L2) among Whisper layers; XLS-R L04
+  # has the highest between-class ratio, within/between cosine ratio, Mantel r
+  # with the acoustic distance, and partial R^2(L2) among XLS-R layers.
+  representative_layers:
+    whisper: 12
+    xlsr: 4
+
+  # Same mapping as Stage 8.
+  vowel_height:
+    i: high
+    y: high
+    u: high
+    e: mid
+    ø: mid
+    o: mid
+    ɛ: mid
+    œ: mid
+    ɔ: mid
+    ə: mid
+    a: low
+    ɑ: low
+
+  # PDF Section 8: bootstrap parameters.
+  bootstrap_n_resamples: 2000
+  alpha: 0.05
+
+  # Acoustic ROPE per PDF Section 8.3.1.
+  # F1: PDF default [-20, +20] Hz, justified by JND ~3-5% of typical F1 (~800 Hz).
+  # F2: [-40, +40] Hz, scaled proportionally to typical F2 (~1500 Hz),
+  #     keeping the same ~2.5-3% JND ratio as the F1 ROPE.
+  rope_acoustic_hz:
+    F1_norm: [-20.0, 20.0]
+    F2_norm: [-40.0, 40.0]
+
+  random_state: 42
