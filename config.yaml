@@ -241,3 +241,52 @@ statistical_tests:
 
   min_speakers_per_group: 2
   random_state: 42
+
+# ---------------------------------------------------------------------------
+# Stage 8: lme_models
+# ---------------------------------------------------------------------------
+lme_models:
+  input_acoustic: data/interim/features_acoustic_norm.csv
+  interim_dir: data/interim
+  figures_dir: results/figures
+  tables_dir: results/tables
+
+  # Same selection logic as statistical_tests; runtime filter keeps only
+  # phonemes with >= 5 complete F1/F2 tokens.
+  oral_vowels: ["i", "e", "ɛ", "a", "ɑ", "ɔ", "o", "u", "y", "ø", "œ", "ə"]
+
+  # PDF Section 7.1 acoustic responses.
+  acoustic_response_cols: ["F1_norm", "F2_norm"]
+
+  # Neural layers reused from statistical_tests / extract_neural_*.
+  neural_layers:
+    whisper: [4, 12, 20]
+    xlsr: [4, 12, 20]
+
+  # PDF Section 7.2: project to first d = 5 PCs.
+  neural_pca_n_components: 5
+
+  # Vowel-height fixed effect (PDF Section 7.3 step 4). IPA-driven mapping.
+  vowel_height:
+    i: high
+    y: high
+    u: high
+    e: mid
+    ø: mid
+    o: mid
+    ɛ: mid
+    œ: mid
+    ɔ: mid
+    ə: mid
+    a: low
+    ɑ: low
+
+  # PDF Question 8: ICC of /a/ in acoustic F1 vs neural PC1.
+  icc_phoneme: "a"
+  icc_neural_rep:
+    model: whisper
+    layer: 12
+    pc: 1
+
+  alpha: 0.05
+  random_state: 42

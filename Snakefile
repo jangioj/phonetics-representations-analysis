@@ -137,6 +137,25 @@ def _descriptive_cross_outputs():
 
     return figs
 
+def _lme_models_outputs():
+    """Tables and figures written by src/lme_models.py."""
+    block = config["lme_models"]
+    tab_dir = block["tables_dir"]
+    fig_dir = f"{block['figures_dir']}/lme"
+    return [
+        f"{tab_dir}/tab_lme_acoustic_coef.csv",
+        f"{tab_dir}/tab_lme_neural_coef.csv",
+        f"{tab_dir}/tab_lme_acoustic_neural_coef.csv",
+        f"{tab_dir}/tab_lme_acoustic_model_comparison.csv",
+        f"{tab_dir}/tab_lme_neural_model_comparison.csv",
+        f"{tab_dir}/tab_lme_random_slope_status.csv",
+        f"{tab_dir}/tab_lme_icc_a.csv",
+        f"{tab_dir}/tab_lme_l1_gender_interaction.csv",
+        f"{tab_dir}/tab_lme_marginal_r2_l1.csv",
+        f"{fig_dir}/fig_lme_forest_l2_effect.png",
+    ]
+
+
 def _statistical_tests_outputs():
     """Tables and selected figures written by src/statistical_tests.py."""
     st = config["statistical_tests"]
@@ -218,6 +237,9 @@ rule all:
 
         # Stage 7: statistical_tests
         _statistical_tests_outputs(),
+
+        # Stage 8: lme_models
+        _lme_models_outputs(),
 
 
 # ---------------------------------------------------------------------------
@@ -403,5 +425,22 @@ rule statistical_tests:
         xlsr_npz=_xlsr_outputs(),
     output:
         _statistical_tests_outputs(),
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+
+# ---------------------------------------------------------------------------
+# Stage 8: lme_models
+# ---------------------------------------------------------------------------
+
+rule lme_models:
+    input:
+        script="src/lme_models.py",
+        config="config.yaml",
+        acoustic=config["lme_models"]["input_acoustic"],
+        whisper_npz=_whisper_outputs(),
+        xlsr_npz=_xlsr_outputs(),
+    output:
+        _lme_models_outputs(),
     shell:
         "pixi run python {input.script} --config {input.config}"
