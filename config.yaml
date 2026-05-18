@@ -347,3 +347,81 @@ rope_ci:
     F2_norm: [-40.0, 40.0]
 
   random_state: 42
+
+# ---------------------------------------------------------------------------
+# Stage 10: clustering
+# ---------------------------------------------------------------------------
+clustering:
+  input_acoustic_norm: data/interim/features_acoustic_norm.csv
+  input_acoustic_raw: data/interim/features_acoustic.csv
+  interim_dir: data/interim
+  figures_dir: results/figures
+  tables_dir: results/tables
+
+  # Nominal French oral vowel inventory. Vowels below min_phoneme_tokens are
+  # automatically excluded from observed clustering/ARI, but remain in the
+  # theoretical partitions below.
+  oral_vowels: ["i", "e", "ɛ", "a", "ɑ", "ɔ", "o", "u", "y", "ø", "œ", "ə"]
+  min_phoneme_tokens: 5
+
+  # Consonants for PDF §9.2 (>= 6 with varied manner/place). All have >= 100
+  # tokens in tokens.csv. Covers plosive(3) / fricative(2) / nasal / lateral /
+  # glide; includes 3 sonorants (n, l, j) for the §9.2 discussion.
+  consonants: ["p", "t", "k", "s", "ʃ", "n", "l", "j"]
+
+  # Acoustic Lobanov-normalised features for the vowel-space representation.
+  acoustic_vowel_feature_cols: ["F1_norm", "F2_norm"]
+  # Extended acoustic features for the consonant+vowel representation.
+  # F1/F2 are Lobanov-normalised; duration and SCG are globally z-scored.
+  # SCG is NaN for non-fricative tokens by design; centroids handle missingness
+  # component-wise and the distance metric is missing-aware Euclidean.
+  acoustic_cv_feature_cols: ["F1_norm", "F2_norm", "duration_z", "scg_z"]
+
+  vowel_partitions:
+    front_back:
+      front: ["i", "e", "ɛ", "y", "ø", "œ", "a"]
+      back: ["u", "o", "ɔ", "ɑ"]
+    height:
+      high: ["i", "y", "u"]
+      mid: ["e", "ø", "o", "ɛ", "œ", "ɔ", "ə"]
+      low: ["a", "ɑ"]
+
+  consonant_manner:
+    p: plosive
+    t: plosive
+    k: plosive
+    s: fricative
+    ʃ: fricative
+    n: nasal
+    l: lateral
+    j: glide
+
+  consonant_place:
+    p: bilabial
+    t: alveolar
+    k: velar
+    s: alveolar
+    ʃ: postalveolar
+    n: alveolar
+    l: alveolar
+    j: palatal
+
+  neural_layers:
+    whisper: [4, 12, 20]
+    xlsr: [4, 12, 20]
+
+  # Representative layers for the main report figures (consistent with Stage 9).
+  representative_layers:
+    whisper: 12
+    xlsr: 4
+
+  # Neural clustering uses the PCA-50 representations produced by Stage 5b.
+  neural_pca_n_components: 50
+
+  # Speaker clustering concatenates one per-vowel PCA-50 mean per speaker.
+  speaker_neural_use_pca: true
+  speaker_min_vowels: 7              # speakers with fewer vowel categories are dropped
+
+  k_range: [2, 3, 4, 5, 6, 7, 8]
+
+  random_state: 42

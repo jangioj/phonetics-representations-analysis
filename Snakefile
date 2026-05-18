@@ -172,6 +172,40 @@ def _rope_ci_outputs():
         f"{fig_dir}/fig_rope_neural_forest_all_layers.png",
     ]
 
+def _clustering_outputs():
+    """Tables and figures written by src/clustering.py."""
+    block = config["clustering"]
+    tab_dir = block["tables_dir"]
+    fig_dir = f"{block['figures_dir']}/clustering"
+
+    files = [
+        f"{tab_dir}/tab_clust_consonant_set.csv",
+        f"{tab_dir}/tab_clust_vowel_ari.csv",
+        f"{tab_dir}/tab_clust_vowel_assignments.csv",
+        f"{tab_dir}/tab_clust_cv_ari.csv",
+        f"{tab_dir}/tab_clust_cv_assignments.csv",
+        f"{tab_dir}/tab_clust_speaker_ari.csv",
+        f"{tab_dir}/tab_clust_speaker_assignments.csv",
+        f"{tab_dir}/tab_clust_k_selection.csv",
+        f"{tab_dir}/tab_clust_q16_systematic_errors.csv",
+        f"{fig_dir}/fig_dendro_vowel_acoustic.png",
+        f"{fig_dir}/fig_dendro_cv_acoustic.png",
+        f"{fig_dir}/fig_dendro_speaker_acoustic.png",
+        f"{fig_dir}/fig_dendro_vowel_all_layers.png",
+        f"{fig_dir}/fig_silhouette_summary.png",
+        f"{fig_dir}/fig_ari_summary.png",
+    ]
+
+    rep = block.get("representative_layers", {})
+    for tag in ("whisper", "xlsr"):
+        L = int(rep.get(tag))
+        Lstr = f"L{L:02d}"
+        files.append(f"{fig_dir}/fig_dendro_vowel_{tag}_{Lstr}.png")
+        files.append(f"{fig_dir}/fig_dendro_cv_{tag}_{Lstr}.png")
+        files.append(f"{fig_dir}/fig_dendro_speaker_{tag}_{Lstr}.png")
+
+    return files
+
 def _statistical_tests_outputs():
     """Tables and selected figures written by src/statistical_tests.py."""
     st = config["statistical_tests"]
@@ -259,6 +293,9 @@ rule all:
 
         # Stage 9: rope_ci
         _rope_ci_outputs(),
+
+        # Stage 10: clustering
+        _clustering_outputs(),
 
 
 # ---------------------------------------------------------------------------
@@ -478,5 +515,23 @@ rule rope_ci:
         xlsr_npz=_xlsr_outputs(),
     output:
         _rope_ci_outputs(),
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 10: clustering
+# ---------------------------------------------------------------------------
+
+rule clustering:
+    input:
+        script="src/clustering.py",
+        config="config.yaml",
+        acoustic_norm=config["clustering"]["input_acoustic_norm"],
+        acoustic_raw=config["clustering"]["input_acoustic_raw"],
+        whisper_npz=_whisper_outputs(),
+        xlsr_npz=_xlsr_outputs(),
+        reduced_npz=_neural_reduced_outputs(),
+    output:
+        _clustering_outputs(),
     shell:
         "pixi run python {input.script} --config {input.config}"
