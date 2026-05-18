@@ -200,3 +200,44 @@ descriptive_cross:
 
   mantel_n_permutations: 5000
   random_state: 42
+
+# ---------------------------------------------------------------------------
+# Stage 7: statistical_tests
+# ---------------------------------------------------------------------------
+statistical_tests:
+  input_acoustic: data/interim/features_acoustic_norm.csv
+  interim_dir: data/interim
+  figures_dir: results/figures
+  tables_dir: results/tables
+
+  # Core French oral vowels used for the PDF Section 6 vowel analyses.
+  oral_vowels: ["i", "e", "ɛ", "a", "ɑ", "ɔ", "o", "u", "y", "ø", "œ", "ə"]
+
+  # Acoustic representation for vowel-space tests and distance matrices.
+  acoustic_feature_cols: ["F1_norm", "F2_norm"]
+
+  # Neural analyses use raw 1024-d embeddings, not PCA/UMAP.
+  # Tables are computed for all listed layers.
+  neural_layers:
+    whisper: [4, 12, 20]
+    xlsr: [4, 12, 20]
+
+  # Only these confusion matrices are plotted to keep the output directory clean.
+  classification_plot_layers:
+    whisper: [4]
+    xlsr: [4]
+
+  # PDF Section 6 parameters.
+  alpha: 0.05
+  neural_l1_l2_n_permutations: 5000
+  mantel_n_permutations: 5000
+  bootstrap_n_resamples: 2000
+
+  # PDF examples, adapted to actual IPA labels in phoneme_base.
+  bootstrap_pairs:
+    - ["e", "ɛ"]
+    - ["o", "ɔ"]
+    - ["y", "u"]
+
+  min_speakers_per_group: 2
+  random_state: 42

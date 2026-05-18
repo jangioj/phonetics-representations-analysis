@@ -137,6 +137,43 @@ def _descriptive_cross_outputs():
 
     return figs
 
+def _statistical_tests_outputs():
+    """Tables and selected figures written by src/statistical_tests.py."""
+    st = config["statistical_tests"]
+    tab_dir = st["tables_dir"]
+    fig_dir = f"{st['figures_dir']}/statistical_tests"
+
+    files = [
+        f"{tab_dir}/tab_stat_acoustic_l1_l2_tests.csv",
+        f"{tab_dir}/tab_stat_acoustic_gender_tests.csv",
+        f"{tab_dir}/tab_stat_neural_l1_l2_permutation.csv",
+        f"{tab_dir}/tab_stat_distance_mantel.csv",
+        f"{tab_dir}/tab_stat_distance_bootstrap_ci.csv",
+        f"{tab_dir}/tab_stat_classifier_predictions.csv",
+        f"{tab_dir}/tab_stat_classifier_accuracy.csv",
+        f"{tab_dir}/tab_stat_classifier_f1.csv",
+        f"{tab_dir}/tab_stat_mcnemar.csv",
+        f"{tab_dir}/tab_stat_distance_matrix_acoustic_euclidean.csv",
+        f"{tab_dir}/tab_stat_distance_matrix_acoustic_mahalanobis.csv",
+        f"{fig_dir}/distances/fig_distance_matrix_acoustic_euclidean.png",
+        f"{fig_dir}/distances/fig_distance_matrix_acoustic_mahalanobis.png",
+        f"{fig_dir}/classification/fig_confusion_acoustic_euclidean.png",
+    ]
+
+    for feat in st.get("acoustic_feature_cols", ["F1_norm", "F2_norm"]):
+        files.append(f"{fig_dir}/acoustic/fig_qq_{feat}_by_vowel_group.png")
+
+    for tag in ("whisper", "xlsr"):
+        key = f"extract_neural_{tag}"
+        default_layers = config[key]["layers"]
+        for L in st.get("neural_layers", {}).get(tag, default_layers):
+            files.append(f"{tab_dir}/tab_stat_distance_matrix_{tag}_L{int(L):02d}.csv")
+
+    for tag in ("whisper", "xlsr"):
+        for L in st.get("classification_plot_layers", {}).get(tag, []):
+            files.append(f"{fig_dir}/classification/fig_confusion_{tag}_L{int(L):02d}.png")
+
+    return files
 
 # ---------------------------------------------------------------------------
 # Default target
@@ -178,6 +215,9 @@ rule all:
         # Stage 6c: descriptive_cross
         "results/tables/tab_mantel_results.csv",
         _descriptive_cross_outputs(),
+
+        # Stage 7: statistical_tests
+        _statistical_tests_outputs(),
 
 
 # ---------------------------------------------------------------------------
@@ -347,5 +387,21 @@ rule descriptive_cross:
     output:
         "results/tables/tab_mantel_results.csv",
         _descriptive_cross_outputs(),
+    shell:
+        "pixi run python {input.script} --config {input.config}"
+
+# ---------------------------------------------------------------------------
+# Stage 7: statistical_tests
+# ---------------------------------------------------------------------------
+
+rule statistical_tests:
+    input:
+        script="src/statistical_tests.py",
+        config="config.yaml",
+        acoustic=config["statistical_tests"]["input_acoustic"],
+        whisper_npz=_whisper_outputs(),
+        xlsr_npz=_xlsr_outputs(),
+    output:
+        _statistical_tests_outputs(),
     shell:
         "pixi run python {input.script} --config {input.config}"
